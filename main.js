@@ -15,10 +15,50 @@ const TicTacToe = (function() {
     const predator = Player('Predator', 'O');
 
     const AI = (function() {
+        // check if a move would win
+        const wouldWin = (token, row, col) => {
+            // save current state
+            const currentValue = Gameboard.getCellValue(row, col);
+            
+            // temporarily make move
+            Gameboard.dropToken(row, col, token);
+            const winning = Gameboard.checkWin(token);
+            
+            // undo move (restore original state)
+            Gameboard.dropToken(row, col, currentValue);
+            
+            return winning;
+        };
+        
+    
+        // find winning move for given token
+        const findWinningMove = (token) => {
+            for (let i = 0; i < 3; i++) {
+                for (let j = 0; j < 3; j++) {
+                    if (Gameboard.getCellValue(i, j) === '') {
+                        if (wouldWin(token, i, j)) {
+                            return [i, j];
+                        }
+                    }
+                }
+            }
+            return null;
+        };
+    
+        // get corner moves
+        const getCornerMoves = () => {
+            const corners = [[0,0], [0,2], [2,0], [2,2]];
+            return corners.filter(([row, col]) => 
+                Gameboard.getCellValue(row, col) === ''
+            );
+        };
+    
+        // check if center is available
+        const isCenterAvailable = () => 
+            Gameboard.getCellValue(1, 1) === '';
+    
         const getRandomMove = () => {
             const availableMoves = [];
-            
-            // get all empty cells
             for (let i = 0; i < 3; i++) {
                 for (let j = 0; j < 3; j++) {
                     if (Gameboard.getCellValue(i, j) === '') {
@@ -27,17 +67,52 @@ const TicTacToe = (function() {
                 }
             }
             
-            // return random available move
             if (availableMoves.length > 0) {
                 const randomIndex = Math.floor(Math.random() * availableMoves.length);
                 return availableMoves[randomIndex];
             }
             return null;
         };
+    
+        const getBestMove = () => {
+            console.log("AI looking for best move...");
+            // check for winning move
+            const winningMove = findWinningMove(predator.getToken());
+            if (winningMove) {
+                console.log("Found winning move:", winningMove);
+                return winningMove;
+            }
+        
+            // 2. block opponent's winning move
+            const blockingMove = findWinningMove(alien.getToken());
+            if (blockingMove) {
+                console.log("Found blocking move:", blockingMove);
+                return blockingMove;
+            }
+        
+            // 3. take center if available
+            if (isCenterAvailable()) {
+                console.log("Taking center");
+                return [1, 1];
+            }
+        
+            // 4. take random corner if available
+            const cornerMoves = getCornerMoves();
+            if (cornerMoves.length > 0) {
+                const move = cornerMoves[Math.floor(Math.random() * cornerMoves.length)];
+                console.log("Taking corner:", move);
+                return move;
+            }
+        
+            // 5. take any available move
+            const move = getRandomMove();
+            console.log("Taking random move:", move);
+            return move;
+        };
 
-        return {getRandomMove};
+        return {getBestMove};
     })();
-
+    
     // gameboard module IIFE
     const Gameboard = (function () {
         // cell factory
@@ -81,12 +156,10 @@ const TicTacToe = (function() {
 
         // make move
         const dropToken = (row, col, player) => {
-            if (gameboard[row][col].getValue() === '') {
-                gameboard[row][col].setValue(player);
-                return true;
-            }
-            return false;
+            gameboard[row][col].setValue(player);
+            return true;
         };
+
         const checkWin = (token) => {
             // check rows
             for (let i = 0; i < 3; i++) {
@@ -142,6 +215,7 @@ const TicTacToe = (function() {
         };
     })();
 
+    // GAME CONTROLLER
     const GameController = (function() {
         let activePlayer = alien;
         let gameOver = false;
@@ -160,45 +234,49 @@ const TicTacToe = (function() {
         };
 
         const getActivePlayer = () => activePlayer;
-
+        
         const playRound = (row, col) => {
             if (gameOver) {
                 console.log("Game is over! Start a new game.");
                 return false;
             }
-
+        
             // human move
             if (Gameboard.dropToken(row, col, activePlayer.getToken())) {
                 console.log(`${activePlayer.getChar()} ${activePlayer.getMove()} position [${row}, ${col}]`);
                 Gameboard.printBoard();
-
+        
                 if (checkGameEnd()) return true;
                 
                 switchPlayerTurn();
-
+        
                 // AI move
                 if (vsAI && activePlayer === predator) {
-                    setTimeout(() => {
-                        const [aiRow, aiCol] = AI.getRandomMove();
-                        Gameboard.dropToken(aiRow, aiCol, activePlayer.getToken());
+                    const [aiRow, aiCol] = AI.getBestMove();
+                    console.log("AI chose move:", aiRow, aiCol); // Debug
+                    if (aiRow !== undefined && aiCol !== undefined) {
+                        const moveSuccess = Gameboard.dropToken(aiRow, aiCol, activePlayer.getToken());
+                        console.log("AI move success:", moveSuccess); // Debug
                         console.log(`${activePlayer.getChar()} ${activePlayer.getMove()} position [${aiRow}, ${aiCol}]`);
                         Gameboard.printBoard();
-
+        
                         if (!checkGameEnd()) {
                             switchPlayerTurn();
                         }
-                    }, 500); // half second delay for better UX
+                    }
                 }
-
+        
                 return true;
             }
             console.log("Invalid move! Position already taken!");
             return false;
         };
-
-        // helper to check win/draw conditions
+    
         const checkGameEnd = () => {
-            if (Gameboard.checkWin(activePlayer.getToken())) {
+            console.log("Checking game end for token:", activePlayer.getToken()); // Debug
+            const isWin = Gameboard.checkWin(activePlayer.getToken());
+            console.log("Is win:", isWin); // Debug
+            if (isWin) {
                 announceWinner(activePlayer);
                 gameOver = true;
                 return true;
@@ -210,6 +288,7 @@ const TicTacToe = (function() {
             }
             return false;
         };
+    
 
         const resetGame = () => {
             Gameboard.initBoard();  
@@ -231,7 +310,7 @@ const TicTacToe = (function() {
             resetGame,
             setVsAI
         };
-    })();
+    })(AI);
     
     return {
         playRound: GameController.playRound,
