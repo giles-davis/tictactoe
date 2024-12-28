@@ -3,32 +3,33 @@ const TicTacToe = (function() {
     const Player = (char, token) => {
         const getChar = () => char;
         const getToken = () => token;
-        const getMove = () => {
-            if (char === 'Alien') return 'hisses and attacks';
-            if (char === 'Predator') return 'attacks with plasma cannon';
-        };
-        return {getChar, getToken, getMove};
+        return {getChar, getToken};
     };
 
     // create characters
-    const alien = Player('Alien', 'X');
-    const predator = Player('Predator', 'O');
+    const alien = Player('Xenomorph', '<img src="./assets/alien.svg" class="token alien-token">');
+    const predator = Player('Predator', '<img src="./assets/predator.svg">');
 
     const AI = (function() {
         // check if a move would win
         const wouldWin = (token, row, col) => {
-            // save current state
-            const currentValue = Gameboard.getCellValue(row, col);
-            
-            // temporarily make move
+            // Only check if the cell is empty
+            if (Gameboard.getCellValue(row, col) !== '') {
+                return false;
+            }
+        
+            // Make the move
             Gameboard.dropToken(row, col, token);
+            
+            // Check if it's a winning move
             const winning = Gameboard.checkWin(token);
             
-            // undo move (restore original state)
-            Gameboard.dropToken(row, col, currentValue);
+            // IMPORTANT: Undo the move by setting it back to empty
+            Gameboard.dropToken(row, col, '');
             
             return winning;
         };
+        
         
     
         // find winning move for given token
@@ -75,45 +76,57 @@ const TicTacToe = (function() {
         };
     
         const getBestMove = () => {
-            console.log("AI looking for best move...");
-            // check for winning move
+            // add randomness to make the AI less perfect
+            const aggressiveness = Math.random();  // 0 to 1
+        
+            // sometimes take an aggressive random move
+            if (aggressiveness > 0.8) {
+                const message = "goes for an aggressive random attack!";
+                const move = getRandomMove();
+                return [...move, message];  // Spread the move array and add message
+            }
+        
+            // check for winning move (Predator always takes winning moves)
             const winningMove = findWinningMove(predator.getToken());
             if (winningMove) {
-                console.log("Found winning move:", winningMove);
-                return winningMove;
+                const message = "moves in for the kill!";
+                return [...winningMove, message];
             }
         
-            // 2. block opponent's winning move
-            const blockingMove = findWinningMove(alien.getToken());
-            if (blockingMove) {
-                console.log("Found blocking move:", blockingMove);
-                return blockingMove;
+            // only sometimes block the Alien (makes it more interesting)
+            if (aggressiveness > 0.3) {
+                const blockingMove = findWinningMove(alien.getToken());
+                if (blockingMove) {
+                    const message = "blocks the Alien's attack!";
+                    return [...blockingMove, message];
+                }
             }
         
-            // 3. take center if available
-            if (isCenterAvailable()) {
-                console.log("Taking center");
-                return [1, 1];
+            // take center or corners with some probability
+            if (aggressiveness > 0.5) {
+                if (isCenterAvailable()) {
+                    const message = "takes a strategic position!";
+                    return [1, 1, message];
+                }
+                const cornerMoves = getCornerMoves();
+                if (cornerMoves.length > 0) {
+                    const message = "moves to higher ground!";
+                    const move = cornerMoves[Math.floor(Math.random() * cornerMoves.length)];
+                    return [...move, message];
+                }
             }
         
-            // 4. take random corner if available
-            const cornerMoves = getCornerMoves();
-            if (cornerMoves.length > 0) {
-                const move = cornerMoves[Math.floor(Math.random() * cornerMoves.length)];
-                console.log("Taking corner:", move);
-                return move;
-            }
-        
-            // 5. take any available move
+            // otherwise take any available move
+            const message = "makes a tactical move...";
             const move = getRandomMove();
-            console.log("Taking random move:", move);
-            return move;
+            return [...move, message];
         };
-
+        
         return {getBestMove};
+        
     })();
     
-    // gameboard module IIFE
+    // ---|| GAMEBOARD MODULE IIFE ||---
     const Gameboard = (function () {
         // cell factory
         const cell = () => {
@@ -154,12 +167,21 @@ const TicTacToe = (function() {
             console.log(boardState);
         };
 
-        // make move
         const dropToken = (row, col, player) => {
-            gameboard[row][col].setValue(player);
-            return true;
+            // Always allow setting to empty (for undo)
+            if (player === '') {
+                gameboard[row][col].setValue('');
+                return true;
+            }
+            
+            // For actual moves, only allow if cell is empty
+            if (gameboard[row][col].getValue() === '') {
+                gameboard[row][col].setValue(player);
+                return true;
+            }
+            return false;
         };
-
+        
         const checkWin = (token) => {
             // check rows
             for (let i = 0; i < 3; i++) {
@@ -215,19 +237,159 @@ const TicTacToe = (function() {
         };
     })();
 
+    // --- || DISPLAY CONTROLLER ||---
+    const DisplayController = (function() {
+        const createBoard = () => {
+            const board = document.getElementById('game-board');
+            if (!board) {
+                console.error('Game board element not found!');
+                return;
+            }
+            for(let i = 0; i < 3; i++) {
+                for(let j = 0; j < 3; j++) {
+                    const cell = document.createElement('button');
+                    cell.classList.add('cell');
+                    cell.dataset.row = i;
+                    cell.dataset.col = j;
+                    cell.addEventListener('click', () => {
+                        // Only update display if the move was valid
+                        if (TicTacToe.playRound(i, j)) {
+                            updateDisplay();
+                        }
+                    });
+                    board.appendChild(cell);
+                }
+            }
+        };
+        
+        const addResetScoresButton = () => {
+            const resetScores = document.createElement('button');
+            resetScores.textContent = 'Reset Scores';
+            resetScores.addEventListener('click', () => {
+                localStorage.removeItem('alienWins');
+                localStorage.removeItem('predatorWins');
+                // Reset display to zero
+                document.getElementById('alien-score').textContent = 'Xenomorph: 0';
+                document.getElementById('predator-score').textContent = 'Predator: 0';
+            });
+            // Add it wherever you want in the UI
+        };
+
+        const initScores = () => {
+            // Get scores from localStorage or default to 0
+            const scores = {
+                alien: localStorage.getItem('alienWins') || 0,
+                predator: localStorage.getItem('predatorWins') || 0
+            };
+            
+            // Create score displays
+            const scoreBoard = document.createElement('div');
+            scoreBoard.id = 'score-board';
+            const gameBoard = document.getElementById('game-board');
+            
+            const alienScore = document.createElement('div');
+            alienScore.id = 'alien-score';
+            alienScore.textContent = `Xenomorph: ${scores.alien}`;
+            
+            const predatorScore = document.createElement('div');
+            predatorScore.id = 'predator-score';
+            predatorScore.textContent = `Predator: ${scores.predator}`;
+            
+            scoreBoard.appendChild(alienScore);
+            scoreBoard.appendChild(predatorScore);
+            gameBoard.parentNode.insertBefore(scoreBoard, gameBoard);
+        };
+
+        const updateScore = (winner) => {
+            const key = winner === 'Xenomorph' ? 'alienWins' : 'predatorWins';
+            const currentScore = parseInt(localStorage.getItem(key) || 0);
+            localStorage.setItem(key, currentScore + 1);
+            
+            // Update display
+            const scoreElement = document.getElementById(`${winner.toLowerCase()}-score`);
+            scoreElement.textContent = `${winner}: ${currentScore + 1}`;
+        };
+
+        const updateDisplay = () => {
+            const cells = document.querySelectorAll('.cell');
+            cells.forEach(cell => {
+                const row = cell.dataset.row;
+                const col = cell.dataset.col;
+                const value = Gameboard.getCellValue(row, col);
+                if (value) {
+                    cell.innerHTML = value;  // Using innerHTML instead of textContent to render the SVG
+                } else {
+                    cell.innerHTML = '';
+                }
+            });
+        };
+    
+        const init = () => {
+            createBoard();
+            initScores();
+            
+            const resetBtn = document.getElementById('reset-btn');
+            const aiToggle = document.getElementById('ai-toggle');
+            
+            if (!resetBtn || !aiToggle) {
+                console.error('Control buttons not found!');
+                return;
+            }
+    
+            resetBtn.addEventListener('click', () => {
+                TicTacToe.resetGame();
+                updateDisplay();
+            });
+    
+            aiToggle.addEventListener('click', (e) => {
+                const isAI = e.target.classList.toggle('active');
+                TicTacToe.setVsAI(isAI);
+                updateDisplay();
+            });
+        };
+
+        const updateMode = (message) => {
+            const modeDisplay = document.getElementById('mode-display');
+            if (modeDisplay) {
+                modeDisplay.textContent = message;
+            }
+        };
+    
+        const updateStatus = (message) => {
+            const status = document.getElementById('status-display');
+            if (status) {
+                status.textContent = message;
+            }
+        };
+    
+        const announceWinner = (player) => {
+            const playerChar = player.getChar();
+            const message = player.getChar() === 'Alien' 
+                ? "The perfect organism has prevailed... Xenomorph Wins!"
+                : "Victory claimed with honor... Predator Wins!";
+            console.log(message);
+            DisplayController.updateStatus(message);
+            DisplayController.updateScore(playerChar); 
+        };
+        
+        return {init, 
+            initScores,
+            updateScore,
+            updateDisplay,
+            updateMode,
+            updateStatus,
+            announceWinner,
+            addResetScoresButton
+        };
+    })();
+
     // GAME CONTROLLER
-    const GameController = (function() {
+    const GameController = (function(AI, DisplayController) {
         let activePlayer = alien;
         let gameOver = false;
         let vsAI = false;
 
-        const announceWinner = (player) => {
-            if (player.getChar() === 'Alien') {
-                console.log("The perfect organism has prevailed... Xenomorph Wins!");
-            } else {
-                console.log("Victory claimed with honor... Predator Wins!");
-            }
-        };
+
 
         const switchPlayerTurn = () => {
             activePlayer = activePlayer === alien ? predator : alien;
@@ -236,73 +398,84 @@ const TicTacToe = (function() {
         const getActivePlayer = () => activePlayer;
         
         const playRound = (row, col) => {
+            console.log(`Starting round at [${row}, ${col}] by ${activePlayer.getChar()}`);
+            
             if (gameOver) {
-                console.log("Game is over! Start a new game.");
+                DisplayController.updateStatus("Game is over! Start a new game.");
                 return false;
             }
         
-            // human move
-            if (Gameboard.dropToken(row, col, activePlayer.getToken())) {
-                console.log(`${activePlayer.getChar()} ${activePlayer.getMove()} position [${row}, ${col}]`);
-                Gameboard.printBoard();
+            // check if move is valid first
+            if (!Gameboard.dropToken(row, col, activePlayer.getToken())) {
+                DisplayController.updateStatus("Invalid move! Position already taken!");
+                return false;
+            }
         
-                if (checkGameEnd()) return true;
-                
-                switchPlayerTurn();
+            console.log(`Valid move made by ${activePlayer.getChar()} at [${row}, ${col}]`);
+            DisplayController.updateStatus(`${activePlayer.getChar()} ${activePlayer === alien ? 'hisses and attacks' : 'attacks with plasma cannon'}`);
         
-                // AI move
-                if (vsAI && activePlayer === predator) {
-                    const [aiRow, aiCol] = AI.getBestMove();
-                    console.log("AI chose move:", aiRow, aiCol); // Debug
-                    if (aiRow !== undefined && aiCol !== undefined) {
-                        const moveSuccess = Gameboard.dropToken(aiRow, aiCol, activePlayer.getToken());
-                        console.log("AI move success:", moveSuccess); // Debug
-                        console.log(`${activePlayer.getChar()} ${activePlayer.getMove()} position [${aiRow}, ${aiCol}]`);
-                        Gameboard.printBoard();
-        
-                        if (!checkGameEnd()) {
-                            switchPlayerTurn();
-                        }
-                    }
-                }
-        
+            if (checkGameEnd()) {
                 return true;
             }
-            console.log("Invalid move! Position already taken!");
-            return false;
+            
+            switchPlayerTurn();
+            console.log(`Turn switched to ${activePlayer.getChar()}`);
+        
+            // AI move
+            if (vsAI && activePlayer === predator && !gameOver) {
+                console.log('AI turn starting');
+                const [aiRow, aiCol, message] = AI.getBestMove(); 
+                if (aiRow !== undefined && aiCol !== undefined) {
+                    console.log(`AI attempting move at [${aiRow}, ${aiCol}]`);
+                    Gameboard.dropToken(aiRow, aiCol, activePlayer.getToken());
+                    DisplayController.updateStatus(`${activePlayer.getChar()} ${message}`);                    
+                    if (checkGameEnd()) {
+                        return true;
+                    }
+                    
+                    switchPlayerTurn();
+                    console.log('AI turn completed');
+                }
+            }
+        
+            return true;
         };
-    
+        
         const checkGameEnd = () => {
-            console.log("Checking game end for token:", activePlayer.getToken()); // Debug
+            console.log("Checking game end for token:", activePlayer.getToken());
             const isWin = Gameboard.checkWin(activePlayer.getToken());
-            console.log("Is win:", isWin); // Debug
+            console.log("Is win:", isWin);
             if (isWin) {
-                announceWinner(activePlayer);
+                DisplayController.announceWinner(activePlayer);
                 gameOver = true;
                 return true;
             }
             if (Gameboard.isBoardFull()) {
-                console.log("The hunt ends in stalemate.");
+                console.log("The hunt ends in a stalemate.");
+                DisplayController.updateStatus("The hunt ends in a stalemate.");
                 gameOver = true;
                 return true;
             }
             return false;
         };
     
-
         const resetGame = () => {
             Gameboard.initBoard();  
             gameOver = false;      
             activePlayer = alien;
-            console.log("New battle started!");
+            DisplayController.updateStatus("New battle started!"); 
             Gameboard.printBoard();
         };
-
+    
         const setVsAI = (enabled) => {
             vsAI = enabled;
             resetGame();
-            console.log(enabled ? "AI mode enabled - Predator will play automatically" : "AI mode disabled - Two player mode");
-        };
+            DisplayController.updateMode(
+                enabled 
+                    ? "AI mode" 
+                    : "Two player mode"
+            );
+        };        
     
         return {
             playRound,
@@ -310,12 +483,17 @@ const TicTacToe = (function() {
             resetGame,
             setVsAI
         };
-    })(AI);
-    
+    })(AI, DisplayController);
+
     return {
         playRound: GameController.playRound,
         printBoard: Gameboard.printBoard,
         resetGame: GameController.resetGame,
-        setVsAI: GameController.setVsAI
+        setVsAI: GameController.setVsAI,
+        init: DisplayController.init
     };
 })();
+
+document.addEventListener('DOMContentLoaded', () => {
+    TicTacToe.init();
+});

@@ -80,7 +80,7 @@ header, main, footer {
 /* #endregion---|| LAY-OUT ||--- */
 /* #region--- || HEADER || --- */
 header {
-  min-height: 80px;
+  min-height: 75px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -93,11 +93,103 @@ header h1 {
   font-family: var(--font-header);
   font-size: 50pt;
   font-weight: 300;
-  color: white;
+  color: whitesmoke;
 }
 /* #endregion--- || HEADER || --- */
 /* #region--- || MAIN CONTENT || --- */
+#game-container {
+  text-align: center;
+  max-width: 500px;
+  margin: 0 auto;
+}
 
+#game-board {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin: 20px auto;
+  max-width: 550px;
+}
+
+#score-board {
+  display: flex;
+  justify-content: space-between;
+  margin: 20px auto;
+  max-width: 550px;
+  color: whitesmoke;
+  font-size: 1.2em;
+  font-weight: bold;
+}
+
+.cell {
+  aspect-ratio: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(51, 51, 51, 0.6);
+  border: solid rgb(17, 177, 17) 1px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
+  font-size: 2em;
+  color: #fff;
+  cursor: pointer;
+  padding: 20px;
+  position: relative;
+  overflow: hidden; 
+}
+
+.token {
+  width: 100%;  
+  height: 100%;  
+  object-fit: contain;
+  position: absolute; /* Position relative to cell */
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%); /* Center the token */
+}
+
+.alien-token {
+  transform: translate(-54%, -37%) scale(1.8);
+  filter: invert(1);
+}
+
+.cell:hover {
+  background: rgba(0, 0, 0, 0.4);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.7);
+}
+
+#mode-display, #status-display {
+  min-height: 50px;
+  font-weight: 600;
+  font-size: 1.1em;
+  color: whitesmoke;
+  text-align: center;
+}
+
+#mode-display {
+  margin-top: 20px;
+  margin-bottom: -10px;
+}
+
+#status-display {
+  margin-bottom: -30px;
+}
+
+#controls {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin: 20px 0;
+}
+
+button {
+  padding: 10px 20px;
+  font-weight: 500;
+  border-radius: 8px;
+  border: black solid 1px;
+  background-color: rgba(245, 245, 245, 0.6);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+}
 /* #endregion--- || MAIN CONTENT || --- */
 /* #region--- || FOOTER || --- */
 footer {
@@ -106,13 +198,13 @@ footer {
   bottom: 0;
   right: 0;
   font-weight: 500;
-  color: white;
+  color: whitesmoke;
   min-height: 40px;
   display: flex;
   justify-content: center;
   align-items: center;
   gap: 10px;
-  background-color: rgba(0, 0, 0, 0.6);
+  background-color: rgba(0, 0, 0, 0.7);
   box-shadow: 0 -4px 3px rgba(0, 0, 0, 0.5);
 }
 
