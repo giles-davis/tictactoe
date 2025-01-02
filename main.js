@@ -252,7 +252,6 @@ const TicTacToe = (function() {
                     cell.dataset.row = i;
                     cell.dataset.col = j;
                     cell.addEventListener('click', () => {
-                        // Only update display if the move was valid
                         if (TicTacToe.playRound(i, j)) {
                             updateDisplay();
                         }
@@ -268,21 +267,19 @@ const TicTacToe = (function() {
             resetScores.addEventListener('click', () => {
                 localStorage.removeItem('alienWins');
                 localStorage.removeItem('predatorWins');
-                // Reset display to zero
                 document.getElementById('alien-score').textContent = 'Xenomorph: 0';
                 document.getElementById('predator-score').textContent = 'Predator: 0';
             });
-            // Add it wherever you want in the UI
         };
 
         const initScores = () => {
-            // Get scores from localStorage or default to 0
+            // get scores from localStorage or default to 0
             const scores = {
                 alien: localStorage.getItem('alienWins') || 0,
                 predator: localStorage.getItem('predatorWins') || 0
             };
             
-            // Create score displays
+            // create score displays
             const scoreBoard = document.createElement('div');
             scoreBoard.id = 'score-board';
             const gameBoard = document.getElementById('game-board');
@@ -301,14 +298,21 @@ const TicTacToe = (function() {
         };
 
         const updateScore = (winner) => {
+            // Map the winner name to the correct score ID
+            const scoreId = winner === 'Xenomorph' ? 'alien-score' : 'predator-score';
             const key = winner === 'Xenomorph' ? 'alienWins' : 'predatorWins';
+            
             const currentScore = parseInt(localStorage.getItem(key) || 0);
             localStorage.setItem(key, currentScore + 1);
             
-            // Update display
-            const scoreElement = document.getElementById(`${winner.toLowerCase()}-score`);
-            scoreElement.textContent = `${winner}: ${currentScore + 1}`;
+            const scoreElement = document.getElementById(scoreId);
+            if (scoreElement) {
+                scoreElement.textContent = `${winner}: ${currentScore + 1}`;
+            } else {
+                console.error('Score element not found for:', winner);
+            }
         };
+        
 
         const updateDisplay = () => {
             const cells = document.querySelectorAll('.cell');
@@ -317,7 +321,7 @@ const TicTacToe = (function() {
                 const col = cell.dataset.col;
                 const value = Gameboard.getCellValue(row, col);
                 if (value) {
-                    cell.innerHTML = value;  // Using innerHTML instead of textContent to render the SVG
+                    cell.innerHTML = value;  // using innerHTML instead of textContent to render the SVG
                 } else {
                     cell.innerHTML = '';
                 }
@@ -330,8 +334,9 @@ const TicTacToe = (function() {
             
             const resetBtn = document.getElementById('reset-btn');
             const aiToggle = document.getElementById('ai-toggle');
+            const resetScores = document.getElementById('reset-scores');
             
-            if (!resetBtn || !aiToggle) {
+            if (!resetBtn || !aiToggle || !resetScores) {
                 console.error('Control buttons not found!');
                 return;
             }
@@ -345,6 +350,13 @@ const TicTacToe = (function() {
                 const isAI = e.target.classList.toggle('active');
                 TicTacToe.setVsAI(isAI);
                 updateDisplay();
+            });
+
+            resetScores.addEventListener('click', () => {
+                localStorage.removeItem('alienWins');
+                localStorage.removeItem('predatorWins');
+                document.getElementById('alien-score').textContent = 'Xenomorph: 0';
+                document.getElementById('predator-score').textContent = 'Predator: 0';
             });
         };
 
@@ -361,10 +373,10 @@ const TicTacToe = (function() {
                 status.textContent = message;
             }
         };
-    
+
         const announceWinner = (player) => {
             const playerChar = player.getChar();
-            const message = player.getChar() === 'Alien' 
+            const message = player.getChar() === 'Xenomorph' 
                 ? "The perfect organism has prevailed... Xenomorph Wins!"
                 : "Victory claimed with honor... Predator Wins!";
             console.log(message);
@@ -410,6 +422,8 @@ const TicTacToe = (function() {
                 DisplayController.updateStatus("Invalid move! Position already taken!");
                 return false;
             }
+
+            DisplayController.updateDisplay(); 
         
             console.log(`Valid move made by ${activePlayer.getChar()} at [${row}, ${col}]`);
             DisplayController.updateStatus(`${activePlayer.getChar()} ${activePlayer === alien ? 'hisses and attacks' : 'attacks with plasma cannon'}`);
