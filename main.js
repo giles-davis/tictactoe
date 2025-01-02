@@ -378,7 +378,7 @@ const TicTacToe = (function() {
             const playerChar = player.getChar();
             const message = player.getChar() === 'Xenomorph' 
                 ? "The perfect organism has prevailed... Xenomorph Wins!"
-                : "Victory claimed with honor... Predator Wins!";
+                : "Victory claimed with honour... Predator Wins!";
             console.log(message);
             DisplayController.updateStatus(message);
             DisplayController.updateScore(playerChar); 
