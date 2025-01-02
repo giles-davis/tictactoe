@@ -2,6 +2,8 @@
 
 This is a dynamic and interactive implementation of the classic TicTacToe game built using HTML, CSS, and JavaScript. This project mainly showcases skills in problem solving, modular design, use of IIFEs for encapsulation and code organization. 
 
+NOTE: This implementation does not feature responsive design, please ensure you are using a large viewport desktop browser window.
+
 ## Features
 
 - **Interactive Gameplay**:
